@@ -2,12 +2,14 @@ import numpy as np
 import pandas as pd
 import time
 
+from sklearn.decomposition import PCA
 from .fast_methods import _compute_val_metrics
 from .fast_methods import _initialization
 from .fast_methods import _run_epoch
 from .fast_methods import _shuffle
 from .utils import _timer
 
+from sklearn.mixture import GaussianMixture
 
 __all__ = ['SVD']
 
@@ -73,7 +75,7 @@ class SVD:
         self.max_rating = max_rating
 
     @_timer(text='\nTraining took ')
-    def fit(self, X, X_val=None):
+    def fit(self, X, X_val=None, women_ids=None, men_ids=None):
         """Learns model weights from input data.
 
         Parameters
@@ -90,6 +92,13 @@ class SVD:
             The current fitted object.
         """
         X = self._preprocess_data(X)
+
+        # NEW
+        
+        self.women_ids = np.array([self.item_mapping_[idx] for idx in women_ids])
+        self.men_ids = np.array([self.item_mapping_[idx] for idx in men_ids])
+        
+        # END NEW
 
         if X_val is not None:
             X_val = self._preprocess_data(X_val, train=False, verbose=False)
@@ -170,9 +179,22 @@ class SVD:
 
             if self.shuffle:
                 X = _shuffle(X)
+                
+            # NEW    
+            women_embeddings = qi[self.women_ids]
+            men_embeddings = qi[self.men_ids]
+            embeddings = np.append(women_embeddings, men_embeddings, axis = 0)
+            pca = PCA(n_components=2)
+            pca.fit(embeddings)
+            transformed_women_embeddings = pca.transform(women_embeddings)
+            transformed_men_embeddings = pca.transform(men_embeddings)
+            women_mean = GaussianMixture(n_components=1, random_state=0).fit(transformed_women_embeddings).means_[0]
+            men_mean = GaussianMixture(n_components=1, random_state=0).fit(transformed_men_embeddings).means_[0]
 
             bu, bi, pu, qi = _run_epoch(X, bu, bi, pu, qi, self.global_mean_,
-                                        self.n_factors, self.lr, self.reg)
+                                        self.n_factors, self.lr, self.reg, women_mean, men_mean, self.women_ids, self.men_ids)
+            
+            # END NEW
 
             if X_val is not None:
                 self.metrics_.loc[epoch_ix, :] = _compute_val_metrics(

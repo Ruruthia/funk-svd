@@ -51,7 +51,7 @@ def _initialization(n_users, n_items, n_factors):
 
 
 @njit
-def _run_epoch(X, bu, bi, pu, qi, global_mean, n_factors, lr, reg):
+def _run_epoch(X, bu, bi, pu, qi, global_mean, n_factors, lr, reg, women_mean, men_mean, women_ids, men_ids):
     """Runs an epoch, updating model weights (pu, qi, bu, bi).
 
     Parameters
@@ -86,8 +86,23 @@ def _run_epoch(X, bu, bi, pu, qi, global_mean, n_factors, lr, reg):
     qi : numpy.array
         Item latent factors matrix.
     """
+    print("MEN")
+    print(men_mean)
+    print("WOMEN")
+    print(women_mean)
+    
     for i in range(X.shape[0]):
         user, item, rating = int(X[i, 0]), int(X[i, 1]), X[i, 2]
+        
+        # NEW 
+#         if np.any(men_ids == item):
+#             print("MEN")
+#             print(men_mean)
+#         elif np.any(women_ids == item):
+#             print("WOMEN")
+#             print(women_mean)
+            
+        # END NEW
 
         # Predict current rating
         pred = global_mean + bu[user] + bi[item]
