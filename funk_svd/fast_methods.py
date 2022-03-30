@@ -103,6 +103,13 @@ def _run_epoch(X, bu, bi, pu, qi, global_mean, n_factors, lr, reg, women_mean, m
 #             print(women_mean)
             
         # END NEW
+        
+        
+        # Patrzymy w którą stronę się przesuwa wektor
+        # Jeśli cosinus wektorów między starym-nowym embeddingiem a centrum kobiecym i męskim jest dodatni to jest źle (chcemy ujemny)
+        # b_i = b_
+        
+        
 
         # Predict current rating
         pred = global_mean + bu[user] + bi[item]
