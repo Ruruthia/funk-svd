@@ -1,5 +1,5 @@
-from funk_svd.dataset import fetch_ml_ratings
-from funk_svd import SVD
+from funk_svd_mod.dataset import fetch_ml_ratings
+from funk_svd_mod import SVD
 
 from sklearn.metrics import mean_absolute_error
 

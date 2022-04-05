@@ -94,11 +94,13 @@ class SVD:
         X = self._preprocess_data(X)
 
         # NEW
-        
+
         self.women_ids = np.array([self.item_mapping_[idx] for idx in women_ids])
         self.men_ids = np.array([self.item_mapping_[idx] for idx in men_ids])
-        
-        # END NEW
+        # self.is_women_dict = {x: np.any(x == self.women_ids) for x in self.item_mapping_.values()}
+        # self.is_men_dict = {x: np.any(x == self.men_ids) for x in self.item_mapping_.values()}
+        self.is_women_dict = set(self.women_ids)
+        self.is_men_dict = set(self.men_ids)
 
         if X_val is not None:
             X_val = self._preprocess_data(X_val, train=False, verbose=False)
@@ -179,29 +181,28 @@ class SVD:
 
             if self.shuffle:
                 X = _shuffle(X)
-                
+
             # NEW    
             women_embeddings = qi[self.women_ids]
             men_embeddings = qi[self.men_ids]
-            embeddings = np.append(women_embeddings, men_embeddings, axis = 0)
-            pca = PCA(n_components=2)
-            pca.fit(embeddings)
-            transformed_women_embeddings = pca.transform(women_embeddings)
-            transformed_men_embeddings = pca.transform(men_embeddings)
-            women_mean = GaussianMixture(n_components=1, random_state=0).fit(transformed_women_embeddings).means_[0]
-            men_mean = GaussianMixture(n_components=1, random_state=0).fit(transformed_men_embeddings).means_[0]
+            women_mean = women_embeddings.mean(axis=0)
+            men_mean = men_embeddings.mean(axis=0)
+
+            # vector: men -> women
+            clusters_diff = women_mean - men_mean
 
             bu, bi, pu, qi = _run_epoch(X, bu, bi, pu, qi, self.global_mean_,
-                                        self.n_factors, self.lr, self.reg, women_mean, men_mean, self.women_ids, self.men_ids)
-            
+                                        self.n_factors, self.lr, self.reg, clusters_diff, self.is_women_dict,
+                                        self.is_men_dict)
+
             # END NEW
 
             if X_val is not None:
                 self.metrics_.loc[epoch_ix, :] = _compute_val_metrics(
-                                                     X_val, bu, bi, pu, qi,
-                                                     self.global_mean_,
-                                                     self.n_factors
-                                                 )
+                    X_val, bu, bi, pu, qi,
+                    self.global_mean_,
+                    self.n_factors
+                )
                 self._on_epoch_end(start,
                                    self.metrics_.loc[epoch_ix, 'Loss'],
                                    self.metrics_.loc[epoch_ix, 'RMSE'],
@@ -299,8 +300,8 @@ class SVD:
             Whether to stop training or not.
         """
         if epoch_idx > 0:
-            if val_rmse[epoch_idx] + min_delta > val_rmse[epoch_idx-1]:
-                self.metrics_ = self.metrics_.loc[:(epoch_idx+1), :]
+            if val_rmse[epoch_idx] + min_delta > val_rmse[epoch_idx - 1]:
+                self.metrics_ = self.metrics_.loc[:(epoch_idx + 1), :]
                 return True
         return False
 
